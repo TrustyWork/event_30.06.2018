@@ -1,10 +1,23 @@
 const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
+const fs = require('fs-extra');
 const cookieParser = require('cookie-parser');
 const log = require('logger').express;
+const logger = require('logger').logger;
 const sassMiddleware = require('node-sass-middleware');
 const config = require('config');
+const helmet = require('helmet')
+
+const isRoutesAvailable = false;
+const setRoutesAvailable = (status) => {
+  if( setRoutesAvailable === status ) {
+    logger.debug(`routes available is already ${status}`)
+    return;
+  }
+
+  isRoutesAvailable = status;
+}
 
 const staticDir = config.get('httpServer:staticDir');
 
@@ -18,6 +31,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
 app.use(log);
+app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -28,6 +42,14 @@ app.use(sassMiddleware({
   sourceMap: true
 }));
 app.use(express.static(staticDir));
+
+app.use(function(req, res, next) {
+  if(isRoutesAvailable) {
+    next();
+  } else {
+    next(createError(503));
+  }
+});
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
@@ -49,3 +71,4 @@ app.use(function(err, req, res, next) {
 });
 
 module.exports = app;
+module.exports.setRoutesAvailable = setRoutesAvailable;
