@@ -9,7 +9,8 @@ const sassMiddleware = require('node-sass-middleware');
 const config = require('config');
 const helmet = require('helmet')
 
-const isRoutesAvailable = false;
+//offline\online http routes
+const isRoutesAvailable = true;//false;
 const setRoutesAvailable = (status) => {
   if( setRoutesAvailable === status ) {
     logger.debug(`routes available is already ${status}`)
@@ -20,9 +21,7 @@ const setRoutesAvailable = (status) => {
 }
 
 const staticDir = config.get('httpServer:staticDir');
-
-const indexRouter = require('./routes/index');
-const usersRouter = require('./routes/users');
+const routesDir = path.join(__dirname, 'routes');
 
 const app = express();
 
@@ -51,8 +50,23 @@ app.use(function(req, res, next) {
   }
 });
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+//auto require routes
+fs.readdirSync(routesDir).forEach((file) => {
+  const routePath = path.join(routesDir, file);
+
+
+  if (path.extname(file) !== '.js' &&  !fs.lstatSync(routePath).isDirectory()) {
+    //junk files
+		return;
+  }
+  
+  let routePrefix = `/${path.basename(file, '.js')}`;
+  if (routePrefix === '/index') {
+    routePrefix = '/';
+  }
+
+  app.use(routePrefix, require(routePath));
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
